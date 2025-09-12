@@ -1,6 +1,13 @@
 import java.util.Scanner;
 
-public class TicTacToe {
+public class Main {
+    public static void main(String[] args) {
+        TicTacToe game = new TicTacToe();
+        game.start();
+    }
+}
+
+class TicTacToe {
     private static final char EMPTY = ' ';
     private static final char X = 'X';
     private static final char O = 'O';
@@ -9,36 +16,39 @@ public class TicTacToe {
     private Scanner scanner = new Scanner(System.in);
 
     public TicTacToe() {
-        clearBoard();
+        initBoard();
     }
 
-    public static void main(String[] args) {
-        TicTacToe game = new TicTacToe();
+    // Inicia el juego (menú)
+    public void start() {
         System.out.println("=== Juego del Gato (Tic-Tac-Toe) ===");
         System.out.println("1) 2 jugadores");
-        System.out.println("2) Jugar contra la CPU (IA, nivel óptimo)");
+        System.out.println("2) Jugar contra la CPU (IA óptima - Minimax)");
         System.out.print("Elige modo (1 o 2): ");
-        int modo = game.readIntInRange(1, 2);
-        if (modo == 1) {
-            game.playTwoPlayers();
-        } else {
-            game.playVsCPU();
-        }
+        int modo = readIntInRange(1, 2);
+        if (modo == 1) playTwoPlayers();
+        else playVsCPU();
     }
 
-    /* ---------- Juego y flujo ---------- */
+    private void initBoard() {
+        for (int i = 0; i < 3; i++)
+            for (int j = 0; j < 3; j++)
+                board[i][j] = EMPTY;
+    }
+
     private void playTwoPlayers() {
         char current = X;
         while (true) {
             printBoard();
             System.out.println("Turno de " + current);
             makeHumanMove(current);
-            if (checkWin(current)) {
+            char winner = checkWinner();
+            if (winner != EMPTY) {
                 printBoard();
-                System.out.println("¡El jugador " + current + " gana!");
+                System.out.println("¡El jugador " + winner + " gana!");
                 break;
             }
-            if (isFull()) {
+            if (isBoardFull()) {
                 printBoard();
                 System.out.println("Empate.");
                 break;
@@ -48,34 +58,40 @@ public class TicTacToe {
     }
 
     private void playVsCPU() {
-        System.out.println("Eres X (comienzas). CPU es O.");
-        char current = X; // humano empieza
+        System.out.print("¿Quieres ser X o O? (X empieza). Presiona Enter para X: ");
+        String in = scanner.nextLine().trim().toUpperCase();
+        char human = in.equals("O") ? O : X;
+        char ai = (human == X) ? O : X;
+        boolean humanTurn = (human == X); // X empieza siempre
+
+        System.out.println("Tú eres " + human + ", la CPU es " + ai + ".");
         while (true) {
             printBoard();
-            if (current == X) {
-                System.out.println("Tu turno (X)");
-                makeHumanMove(X);
+            if (humanTurn) {
+                System.out.println("Tu turno (" + human + ")");
+                makeHumanMove(human);
             } else {
-                System.out.println("Turno de la CPU (O) — pensando...");
-                Move best = findBestMove(O);
-                board[best.row][best.col] = O;
+                System.out.println("Turno de la CPU (" + ai + ") — pensando...");
+                Move m = findBestMove(ai);
+                if (m.row != -1) board[m.row][m.col] = ai;
             }
-            if (checkWin(current)) {
+
+            char winner = checkWinner();
+            if (winner != EMPTY) {
                 printBoard();
-                if (current == X) System.out.println("¡Felicidades! Ganaste.");
-                else System.out.println("La CPU gana. Mejor suerte la próxima.");
+                if (winner == human) System.out.println("¡Felicidades! Ganaste.");
+                else System.out.println("La CPU gana. Intenta otra vez.");
                 break;
             }
-            if (isFull()) {
+            if (isBoardFull()) {
                 printBoard();
                 System.out.println("Empate.");
                 break;
             }
-            current = (current == X) ? O : X;
+            humanTurn = !humanTurn;
         }
     }
 
-    /* ---------- Movimiento humano ---------- */
     private void makeHumanMove(char player) {
         while (true) {
             System.out.print("Ingresa fila (1-3): ");
@@ -91,17 +107,11 @@ public class TicTacToe {
         }
     }
 
-    /* ---------- Utilidades del tablero ---------- */
-    private void clearBoard() {
-        for (int i = 0; i < 3; i++)
-            for (int j = 0; j < 3; j++)
-                board[i][j] = EMPTY;
-    }
-
     private void printBoard() {
-        System.out.println("\n   1   2   3 ");
+        System.out.println();
+        System.out.println("   1   2   3");
         for (int i = 0; i < 3; i++) {
-            System.out.print((i+1) + " ");
+            System.out.print((i + 1) + " ");
             for (int j = 0; j < 3; j++) {
                 System.out.print(" " + (board[i][j] == EMPTY ? ' ' : board[i][j]) + " ");
                 if (j < 2) System.out.print("|");
@@ -112,44 +122,48 @@ public class TicTacToe {
         System.out.println();
     }
 
-    private boolean isFull() {
+    private boolean isBoardFull() {
         for (int i = 0; i < 3; i++)
             for (int j = 0; j < 3; j++)
                 if (board[i][j] == EMPTY) return false;
         return true;
     }
 
-    private boolean checkWin(char player) {
-        // filas y columnas
+    private char checkWinner() {
+        // Filas y columnas
         for (int i = 0; i < 3; i++) {
-            if (board[i][0] == player && board[i][1] == player && board[i][2] == player) return true;
-            if (board[0][i] == player && board[1][i] == player && board[2][i] == player) return true;
+            if (board[i][0] != EMPTY && board[i][0] == board[i][1] && board[i][1] == board[i][2])
+                return board[i][0];
+            if (board[0][i] != EMPTY && board[0][i] == board[1][i] && board[1][i] == board[2][i])
+                return board[0][i];
         }
-        // diagonales
-        if (board[0][0] == player && board[1][1] == player && board[2][2] == player) return true;
-        if (board[0][2] == player && board[1][1] == player && board[2][0] == player) return true;
-        return false;
+        // Diagonales
+        if (board[0][0] != EMPTY && board[0][0] == board[1][1] && board[1][1] == board[2][2])
+            return board[0][0];
+        if (board[0][2] != EMPTY && board[0][2] == board[1][1] && board[1][1] == board[2][0])
+            return board[0][2];
+        return EMPTY;
     }
 
-    /* ---------- IA: Minimax ---------- */
     private static class Move {
         int row, col;
         Move(int r, int c) { row = r; col = c; }
     }
 
-    private Move findBestMove(char aiPlayer) {
+    private Move findBestMove(char aiSymbol) {
         int bestVal = Integer.MIN_VALUE;
         Move bestMove = new Move(-1, -1);
+
         for (int i = 0; i < 3; i++) {
             for (int j = 0; j < 3; j++) {
                 if (board[i][j] == EMPTY) {
-                    board[i][j] = aiPlayer;
-                    int moveVal = minimax(0, false, aiPlayer);
+                    board[i][j] = aiSymbol;
+                    int moveVal = minimax(0, false, aiSymbol);
                     board[i][j] = EMPTY;
                     if (moveVal > bestVal) {
+                        bestVal = moveVal;
                         bestMove.row = i;
                         bestMove.col = j;
-                        bestVal = moveVal;
                     }
                 }
             }
@@ -157,27 +171,20 @@ public class TicTacToe {
         return bestMove;
     }
 
-    // retorna +10 si aiPlayer gana, -10 si oponente gana, 0 empate
-    private int evaluate(char aiPlayer) {
-        if (checkWin(aiPlayer)) return +10;
-        char human = (aiPlayer == X) ? O : X;
-        if (checkWin(human)) return -10;
-        return 0;
-    }
-
-    private int minimax(int depth, boolean isMax, char aiPlayer) {
-        int score = evaluate(aiPlayer);
-        if (score == 10) return score - depth; // preferir victoria rápida
-        if (score == -10) return score + depth; // evitar derrota tardía
-        if (isFull()) return 0;
+    private int minimax(int depth, boolean isMax, char aiSymbol) {
+        char winner = checkWinner();
+        char opponent = (aiSymbol == X) ? O : X;
+        if (winner == aiSymbol) return 10 - depth;
+        if (winner == opponent) return depth - 10;
+        if (isBoardFull()) return 0;
 
         if (isMax) {
             int best = Integer.MIN_VALUE;
             for (int i = 0; i < 3; i++) {
                 for (int j = 0; j < 3; j++) {
                     if (board[i][j] == EMPTY) {
-                        board[i][j] = aiPlayer;
-                        best = Math.max(best, minimax(depth + 1, !isMax, aiPlayer));
+                        board[i][j] = aiSymbol;
+                        best = Math.max(best, minimax(depth + 1, false, aiSymbol));
                         board[i][j] = EMPTY;
                     }
                 }
@@ -185,12 +192,11 @@ public class TicTacToe {
             return best;
         } else {
             int best = Integer.MAX_VALUE;
-            char human = (aiPlayer == X) ? O : X;
             for (int i = 0; i < 3; i++) {
                 for (int j = 0; j < 3; j++) {
                     if (board[i][j] == EMPTY) {
-                        board[i][j] = human;
-                        best = Math.min(best, minimax(depth + 1, !isMax, aiPlayer));
+                        board[i][j] = opponent;
+                        best = Math.min(best, minimax(depth + 1, true, aiSymbol));
                         board[i][j] = EMPTY;
                     }
                 }
@@ -199,8 +205,8 @@ public class TicTacToe {
         }
     }
 
-    /* ---------- Lectura segura de enteros ---------- */
-    private int readIntInRange(int min, int max) {
+    // Lectura segura de enteros (usa scanner.nextLine internamente)
+    public int readIntInRange(int min, int max) {
         while (true) {
             String line = scanner.nextLine().trim();
             try {
